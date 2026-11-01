@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mill Dashboard System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-100 font-sans antialiased text-slate-800">
+
+    <div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- Firebase connection status -->
+        <div id="dbBanner" class="hidden bg-red-50 border border-red-300 text-red-800 rounded-2xl p-4 text-xs font-semibold"></div>
+
+        <!-- Header -->
+        <header class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="space-y-1">
+                <h1 class="text-2xl font-extrabold text-slate-900">Boyshunts</h1>
+                <p class="text-xs text-slate-500">Mill Chart</p>
+
+                <div class="flex flex-wrap items-center gap-2 pt-2">
+                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
+                        <span class="text-slate-500 font-medium">Month:</span>
+                        <input type="month" id="viewMonthSelect" onchange="renderAll()" class="bg-transparent font-bold text-slate-700 focus:outline-none">
+                    </div>
+                    <button id="adminLoginBtn" onclick="openAdminLogin()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Admin Login</button>
+                    <button id="adminLogoutBtn" onclick="adminLogout()" class="hidden bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Admin Logout</button>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3 text-right w-full md:w-auto flex md:flex-col justify-between items-center md:items-end">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Maser Grand Total</span>
+                <span id="grandTotalText" class="text-2xl font-black text-indigo-600">0 Mill</span>
+            </div>
+        </header>
+
+        <!-- ADMIN PANEL (only visible after admin login) -->
+        <div id="adminPanel" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-5">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Admin Control Panel</h2>
+
+            <!-- Member Management -->
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                <h3 class="text-xs font-bold text-slate-700 uppercase">Member Management</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="memberNameInput" placeholder="Notun member-er nam..." class="flex-1 border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-indigo-600 bg-white">
+                    <button onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition shadow-sm">Add</button>
+                </div>
+                <div id="memberList" class="flex flex-wrap gap-2 pt-1"></div>
+            </div>
+
+            <!-- Auto Setup -->
+            <div class="bg-blue-50/60 border border-blue-200 rounded-xl p-3.5 space-y-2.5">
+                <h3 class="text-xs font-bold text-blue-900 uppercase">Admin Auto Setup (Dupur & Rat)</h3>
+                <p class="text-[11px] text-blue-900/70">Auto chalu korle ajker tarikh theke protidin nijer theke P boshbe. Ager din gulo ar bhobishyoter din gulo bodlabe na.</p>
+                <div class="space-y-2" id="adminAutoList"></div>
+            </div>
+
+            <!-- Mill Off / On Log -->
+            <div class="bg-rose-50/60 border border-rose-200 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-xs font-bold text-rose-900 uppercase">Activity Log (Mill Off/On, P/F)</h3>
+                    <button onclick="clearLogs()" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-white border border-rose-200 px-2.5 py-1 rounded-lg">Log Clear</button>
+                </div>
+                <div id="logContainer" class="bg-white border border-rose-200 rounded-xl max-h-72 overflow-y-auto divide-y divide-slate-100 text-xs"></div>
+            </div>
+
+            <!-- Month-wise Report -->
+            <div class="bg-purple-50/60 border border-purple-200 rounded-xl p-4 space-y-3">
+                <h3 class="text-xs font-bold text-purple-900 uppercase">Admin Month-wise Mill Report</h3>
+                <div class="flex flex-col sm:flex-row gap-3 items-end">
+                    <div class="flex-1 w-full">
+                        <label class="block text-xs font-bold text-purple-900 mb-1.5">Report Maser Select Korun:</label>
+                        <input type="month" id="adminReportMonthSelect" class="w-full border border-purple-300 rounded-xl px-3.5 py-2 text-sm bg-white">
+                    </div>
+                    <button onclick="generateAdminMonthReport()" class="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm w-full sm:w-auto">List</button>
+                    <button onclick="printDateWiseReport()" class="bg-white hover:bg-purple-50 text-purple-800 border border-purple-300 px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm w-full sm:w-auto">PDF Report</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mill Off Setup (admin always, users when admin allows) -->
+            <div id="millOffSection" class="hidden bg-amber-50/60 border border-amber-200 rounded-2xl shadow-sm p-5 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-xs font-bold text-amber-900 uppercase">Mill Off From</h3>
+                    <label id="adminOnlyToggle" class="hidden items-center gap-2 bg-white border border-amber-300 rounded-xl px-3 py-1.5 cursor-pointer">
+                        <input type="checkbox" id="userMillOffToggle" onchange="setUserMillOffAccess(this.checked)" class="w-4 h-4 rounded">
+                        <span class="text-xs font-bold text-amber-900">User Mill Cut off</span>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                    <div>
+                        <label class="block text-xs font-bold text-amber-900 mb-1.5">Member Select Korun:</label>
+                        <select id="offMemberSelect" onchange="renderCalendar()" class="w-full border border-amber-300 rounded-xl px-3.5 py-2.5 text-sm bg-white font-medium focus:outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-amber-900 mb-1.5">Calendar theke Date Select Korun:</label>
+                        <div id="calWrapper" class="relative">
+                        <button id="calTrigger" onclick="toggleCalPopup(event)" class="w-full flex items-center justify-between border border-amber-300 rounded-xl px-3.5 py-2.5 text-sm bg-white text-slate-600 text-left focus:outline-none">
+                            <span id="calTriggerText">Date select korun...</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        </button>
+                        <div id="calPopup" class="hidden absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-amber-300 rounded-xl p-3 shadow-xl">
+                            <div class="flex items-center justify-between mb-2">
+                                <button onclick="calChangeMonth(-1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700">&lsaquo;</button>
+                                <span id="calTitle" class="text-sm font-bold text-slate-800"></span>
+                                <button onclick="calChangeMonth(1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700">&rsaquo;</button>
+                            </div>
+                            <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 mb-1">
+                                <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                            </div>
+                            <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+                            <div class="flex justify-between mt-2 text-xs font-semibold">
+                                <button onclick="calClear()" class="text-blue-600 hover:text-blue-800">Clear</button>
+                                <button onclick="calToday()" class="text-blue-600 hover:text-blue-800">Today</button>
+                            </div>
+                            <button onclick="closeCalPopup()" class="w-full mt-2 bg-[#D97706] hover:bg-amber-700 text-white py-2 rounded-lg text-xs font-bold transition">Done</button>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-3 rounded-xl border border-amber-200 space-y-1">
+                    <span class="block text-xs font-bold text-amber-900">Selected Dates:</span>
+                    <div id="selectedDatesContainer" class="flex flex-wrap gap-1.5">
+                        <span class="text-xs text-slate-400 italic">Kono date select kora hoyni.</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-1">
+                    <button onclick="addOffToken()" class="bg-[#D97706] hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">Mill Off Korun</button>
+                </div>
+
+                <div id="tokenContainer" class="hidden bg-white p-3 rounded-xl border border-amber-200 text-xs text-slate-400">Kono mill off token nei.</div>
+            </div>
+
+
+        <!-- USER LIST (month-wise) -->
+        <main class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 id="listHeading" class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Members Mill List</h2>
+                <div class="flex items-center gap-3 text-[11px] font-semibold text-slate-500">
+                    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded bg-emerald-600"></span>P = Mill Cholche</span>
+                    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded bg-rose-500"></span>F = Mill Cholenai</span>
+                </div>
+            </div>
+            <div id="memberListContainer" class="space-y-3"></div>
+        </main>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminLoginModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <h3 class="font-bold text-base text-slate-900">Admin Login</h3>
+            <input type="password" id="adminPasswordInput" placeholder="Admin password" onkeydown="if(event.key==='Enter') adminLogin()" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-600">
+            <p id="adminLoginError" class="hidden text-xs font-semibold text-red-600">Password thik noy!</p>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeAdminLogin()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition">Cancel</button>
+                <button onclick="adminLogin()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-bold transition">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Report Modal -->
+    <div id="adminReportModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="adminReportTitle" class="font-bold text-base text-purple-900">Month-wise Mill Report</h3>
+                <div class="flex items-center gap-2">
+                    <button onclick="printDateWiseReport()" class="bg-purple-700 hover:bg-purple-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition">Pdf Report</button>
+                    <button onclick="closeAdminReportModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold transition">Close</button>
+                </div>
+            </div>
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="bg-purple-50 text-purple-900 border-b font-bold">
+                            <th class="p-3">Sodossho Nam</th>
+                            <th class="p-3 text-center">Total Dupur Mill</th>
+                            <th class="p-3 text-center">Total Rat Mill</th>
+                            <th class="p-3 text-center">Grand Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminReportTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getDatabase, ref, set, update, get, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+        // ===== ADMIN PASSWORD (ekhane nijer password din) =====
+        const ADMIN_PASSWORD = "admin123";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlBvJgW0bR5t2ARSznjlJpR2-Ko_VwxdE",
+            authDomain: "millsystem-2f9d5.firebaseapp.com",
+            databaseURL: "https://millsystem-2f9d5-default-rtdb.firebaseio.com",
+            projectId: "millsystem-2f9d5",
+            storageBucket: "millsystem-2f9d5.firebasestorage.app",
+            messagingSenderId: "710180414527",
+            appId: "1:710180414527:web:a3e30e85c764e6014f448a",
+            measurementId: "G-DVBR2LCSGL"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Default data - used ONLY to seed a brand-new empty database
+        const DEFAULT_MEMBERS = ["Bosir", "Nadim", "Noman", "Robi", "Sadik", "Tanjil"];
+        const DEFAULT_AUTO = {
+            "Bosir": { dujur: false, rat: false },
+            "Nadim": { dujur: false, rat: false },
+            "Noman": { dujur: false, rat: false },
+            "Robi": { dujur: false, rat: false },
+            "Sadik": { dujur: false, rat: false },
+            "Tanjil": { dujur: true, rat: true }
+        };
+        let members = [];
+        let autoSettings = {};
+        let offTokens = [];
+        let manualMeals = {};
+        let selectedDatesList = [];
+        let isCloudDataLoaded = false;
+        let isAdmin = false;
+        let activityLogs = [];
+        let userMillOffAllowed = true; // admin controls whether users can use Mill Off
+        let openMembers = new Set(); // which user lists are expanded
+
+        try { isAdmin = sessionStorage.getItem('millAdmin') === '1'; } catch (e) {}
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const thisMonth = todayStr.slice(0, 7);
+        document.getElementById('viewMonthSelect').value = thisMonth;
+        document.getElementById('adminReportMonthSelect').value = thisMonth;
+
+        // ===== Firebase sync =====
+        function showDbError(msg) {
+            const el = document.getElementById('dbBanner');
+            el.innerText = msg;
+            el.classList.remove('hidden');
+        }
+
+        function initFirebaseSync() {
+            onValue(ref(db, 'millData'), (snapshot) => {
+                const data = snapshot.val();
+                document.getElementById('dbBanner').classList.add('hidden');
+                if (data) {
+                    members = data.members ? Object.values(data.members) : [];
+                    autoSettings = data.autoSettings || {};
+                    offTokens = data.offTokens ? Object.values(data.offTokens) : [];
+                    manualMeals = data.manualMeals || {};
+                    userMillOffAllowed = data.userMillOffAllowed !== false;
+                    activityLogs = data.logs ? Object.values(data.logs) : [];
+                    isCloudDataLoaded = true;
+                } else {
+                    // brand-new empty database: seed defaults once
+                    members = [...DEFAULT_MEMBERS];
+                    autoSettings = JSON.parse(JSON.stringify(DEFAULT_AUTO));
+                    isCloudDataLoaded = true;
+                    saveToCloud();
+                }
+                renderAll();
+            }, (error) => {
+                console.error("Firebase read error: ", error);
+                showDbError("Firebase theke data ashche na! Karon: " + (error && error.message ? error.message : error) + " — Firebase Console > Realtime Database > Rules check korun (rules expire hoye jete pare).");
+                renderAll();
+            });
+        }
+
+        function saveToCloud() {
+            if (!isCloudDataLoaded && members.length === 0) return;
+            set(ref(db, 'millData'), { members, autoSettings, offTokens, manualMeals, userMillOffAllowed, logs: activityLogs })
+                .catch((error) => console.error("Firebase save error: ", error));
+        }
+
+        // Granular write: only touches the given paths, so a stale/offline device
+        // can never overwrite the whole database (that was bringing deleted users back).
+        // A value of null (or an empty list) deletes that path from Firebase permanently.
+        function dbUpdate(updates) {
+            if (!isCloudDataLoaded) {
+                alert("Firebase-er sathe connect hoyni, tai save kora jabe na! Upore lal message check korun.");
+                return Promise.reject(new Error("not connected"));
+            }
+            const clean = {};
+            Object.keys(updates).forEach(k => {
+                let v = updates[k];
+                if (v === undefined || (Array.isArray(v) && v.length === 0)) v = null;
+                clean[k] = v;
+            });
+            return update(ref(db, 'millData'), clean).catch((error) => {
+                console.error("Firebase update error: ", error);
+                alert("Firebase-e save hoyni! Karon: " + (error && error.message ? error.message : error));
+                throw error;
+            });
+        }
+
+        const INVALID_NAME = /[.$#\[\]\/]/;
+
+        // ===== Render =====
+        window.renderAll = function() {
+            applyAdminVisibility();
+            renderUserList();
+            if (isAdmin || userMillOffAllowed) {
+                renderMemberSelect();
+                renderSelectedDatesTags();
+            }
+            if (isAdmin) {
+                document.getElementById('userMillOffToggle').checked = userMillOffAllowed;
+                renderMembers();
+                renderAdminAutoList();
+                renderTokens();
+                renderLogs();
+            }
+        }
+
+        function applyAdminVisibility() {
+            document.getElementById('adminPanel').classList.toggle('hidden', !isAdmin);
+            document.getElementById('millOffSection').classList.toggle('hidden', !(isAdmin || userMillOffAllowed));
+            document.getElementById('adminOnlyToggle').classList.toggle('hidden', !isAdmin);
+            document.getElementById('adminOnlyToggle').classList.toggle('flex', isAdmin);
+            document.getElementById('tokenContainer').classList.toggle('hidden', !isAdmin);
+            document.getElementById('adminLoginBtn').classList.toggle('hidden', isAdmin);
+            document.getElementById('adminLogoutBtn').classList.toggle('hidden', !isAdmin);
+        }
+
+        // ===== Mill Off / On activity log =====
+        function addLog(name, date, action, extra) {
+            activityLogs.push(Object.assign({ name, date, action, by: isAdmin ? 'Admin' : 'User', at: Date.now() }, extra || {}));
+            if (activityLogs.length > 300) activityLogs = activityLogs.slice(-300);
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('logContainer');
+            if (!container) return;
+            if (activityLogs.length === 0) {
+                container.innerHTML = `<div class="p-3 text-slate-400">Kono log nei.</div>`;
+                return;
+            }
+            const weekDays = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+            let html = '';
+            for (let i = activityLogs.length - 1; i >= 0; i--) {
+                const l = activityLogs[i];
+                const [y, mo, d] = l.date.split('-').map(Number);
+                const wd = weekDays[new Date(y, mo - 1, d).getDay()];
+                const when = new Date(l.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+                let badge;
+                if (l.action === 'meal') {
+                    const mealName = l.meal === 'dujur' ? 'Dupur' : 'Rat';
+                    badge = l.to
+                        ? `<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-bold">${mealName}: F → P</span>`
+                        : `<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-600 font-bold">${mealName}: P → F</span>`;
+                } else if (l.action === 'off') {
+                    badge = `<span class="px-2 py-0.5 rounded-md bg-red-100 text-red-600 font-bold">Mill Off</span>`;
+                } else {
+                    badge = `<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-bold">Mill On</span>`;
+                }
+                html += `
+                    <div class="p-2.5 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            ${badge}
+                            <span><strong class="text-slate-800">${l.name}</strong> - ${l.date} <span class="text-slate-400">(${wd})</span></span>
+                        </div>
+                        <span class="text-[10px] text-slate-400">${l.by} &middot; ${when}</span>
+                    </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        window.clearLogs = function() {
+            if (!isAdmin) return;
+            if (!confirm("Sob log muche felben?")) return;
+            activityLogs = [];
+            dbUpdate({ logs: [] });
+            renderAll();
+        }
+
+        // ===== Auto meal: applies day-by-day from the date it was turned on =====
+        // autoSettings[name] = { dujur, rat, dujurRanges:[{from,to?}], ratRanges:[{from,to?}] }
+        function nowStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function yesterdayStr() {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function autoRanges(name, type) {
+            const a = autoSettings[name] || {};
+            const r = a[type + 'Ranges'];
+            if (r) return Object.values(r);
+            // old data (before this update): auto was on for every day
+            return a[type] ? [{ from: '1970-01-01' }] : [];
+        }
+
+        // Auto counts only for days inside an ON period, and only up to today (future days stay F until they arrive)
+        function autoActiveOn(name, type, dateStr) {
+            if (dateStr > nowStr()) return false;
+            return autoRanges(name, type).some(r => dateStr >= r.from && (!r.to || dateStr <= r.to));
+        }
+
+        // ===== Meal status logic =====
+        function isMillOff(name, date) {
+            return offTokens.some(token => token.name === name && token.date === date);
+        }
+
+        function getMealStatus(m, currentDate) {
+            let isOff = isMillOff(m, currentDate);
+            let dateManual = manualMeals[currentDate]?.[m];
+
+            let dujurActive = false;
+            let ratActive = false;
+            let editInfo = "";
+
+            if (!isOff) {
+                dujurActive = (dateManual && dateManual.dujur !== undefined) ? dateManual.dujur : autoActiveOn(m, 'dujur', currentDate);
+                ratActive = (dateManual && dateManual.rat !== undefined) ? dateManual.rat : autoActiveOn(m, 'rat', currentDate);
+                if (dateManual && dateManual.editedAt) editInfo = dateManual.editedAt;
+            }
+
+            const userTotalMill = (dujurActive ? 1 : 0) + (ratActive ? 1 : 0);
+            return { isOff, dujurActive, ratActive, userTotalMill, editInfo };
+        }
+
+        // ===== USER LIST (month-wise) =====
+        function renderUserList() {
+            const container = document.getElementById('memberListContainer');
+            if (!isCloudDataLoaded) {
+                container.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-400">Firebase theke data load hocche...</div>`;
+                return;
+            }
+            const selectedMonth = document.getElementById('viewMonthSelect').value || thisMonth;
+            const [sYear, sMonth] = selectedMonth.split('-');
+            const daysInMonth = new Date(Number(sYear), Number(sMonth), 0).getDate();
+            const daysOfWeek = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+            document.getElementById('listHeading').innerText = `Members Mill List - ${monthNames[Number(sMonth) - 1]} ${sYear}`;
+
+            let grandTotal = 0;
+            let html = '';
+
+            members.forEach((m, mi) => {
+                let totalD = 0, totalR = 0, rows = '';
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${sYear}-${sMonth}-${String(day).padStart(2, '0')}`;
+                    const dayName = daysOfWeek[new Date(Number(sYear), Number(sMonth) - 1, day).getDay()];
+                    const s = getMealStatus(m, dateStr);
+                    if (s.dujurActive) totalD++;
+                    if (s.ratActive) totalR++;
+
+                    const cell = (active, type) => {
+                        if (s.isOff) return `<span class="text-slate-300 font-bold">-</span>`;
+                        return `<button onclick="toggleDailyMeal('${m}', '${type}', '${dateStr}')" class="w-8 h-7 rounded-lg font-bold text-xs transition ${active ? 'bg-emerald-600 text-white' : 'bg-rose-100 text-rose-600'}">${active ? 'P' : 'F'}</button>`;
+                    };
+
+                    const canOff = isAdmin || userMillOffAllowed;
+                    const offBtn = !canOff
+                        ? (s.isOff ? `<span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-100 text-red-500">Off</span>` : `<span class="text-slate-300 font-bold">-</span>`)
+                        : s.isOff
+                        ? `<button onclick="toggleMillOff('${m}', '${dateStr}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-500 text-white hover:bg-red-600 transition">Off (Undo)</button>`
+                        : `<button onclick="toggleMillOff('${m}', '${dateStr}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 transition">Mill Off</button>`;
+
+                    const isToday = dateStr === todayStr;
+                    rows += `
+                        <tr class="${isToday ? 'bg-indigo-50/60' : 'hover:bg-slate-50'} ${s.isOff ? 'bg-red-50/60' : ''}">
+                            <td class="p-2 font-medium">
+                                ${dateStr} <span class="text-[10px] text-slate-400">(${dayName})</span>
+                                ${isToday ? '<span class="text-[10px] font-bold text-indigo-600 ml-1">Ajke</span>' : ''}
+                                ${s.editInfo ? `<span class="block text-[10px] text-amber-600 font-semibold">Edited: ${s.editInfo}</span>` : ''}
+                            </td>
+                            <td class="p-2 text-center">${cell(s.dujurActive, 'dujur')}</td>
+                            <td class="p-2 text-center">${cell(s.ratActive, 'rat')}</td>
+                            <td class="p-2 text-center font-bold text-indigo-600">${s.userTotalMill}</td>
+                            <td class="p-2 text-center">${offBtn}</td>
+                        </tr>`;
+                }
+
+                const total = totalD + totalR;
+                grandTotal += total;
+                const isOpen = openMembers.has(m);
+
+                html += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                        <button onclick="toggleMemberOpen(${mi})" class="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 transition">
+                            <div>
+                                <h3 class="font-bold text-base text-slate-900">${m}</h3>
+                                <p class="text-xs text-slate-400">@${m.toLowerCase()} &middot; Dupur ${totalD} &middot; Rat ${totalR}</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl font-black text-indigo-600">${total} Mill</span>
+                                <span class="text-slate-400 text-xs font-bold">${isOpen ? '▲' : '▼'}</span>
+                            </div>
+                        </button>
+                        <div class="${isOpen ? '' : 'hidden'} border-t border-slate-100 overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-600 border-b">
+                                        <th class="p-2.5">Tarikh & Day</th>
+                                        <th class="p-2.5 text-center">Dupur</th>
+                                        <th class="p-2.5 text-center">Rat</th>
+                                        <th class="p-2.5 text-center">Total</th>
+                                        <th class="p-2.5 text-center">Mill Off</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>`;
+            });
+
+            if (members.length === 0) {
+                html = `<div class="bg-white rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-400">Kono member nei.</div>`;
+            }
+
+            container.innerHTML = html;
+            document.getElementById('grandTotalText').innerText = `${grandTotal} Mill`;
+        }
+
+        window.toggleMemberOpen = function(index) {
+            const name = members[index];
+            if (openMembers.has(name)) openMembers.delete(name); else openMembers.add(name);
+            renderUserList();
+        }
+
+        // Click P/F to change a single meal for that date
+        window.toggleDailyMeal = function(name, type, dateStr) {
+            if (isMillOff(name, dateStr)) {
+                alert("Ei member-er ei tarikhe mill off kora ache!");
+                return;
+            }
+            if (!manualMeals[dateStr]) manualMeals[dateStr] = {};
+            if (!manualMeals[dateStr][name]) {
+                manualMeals[dateStr][name] = {
+                    dujur: autoActiveOn(name, 'dujur', dateStr),
+                    rat: autoActiveOn(name, 'rat', dateStr)
+                };
+            }
+            manualMeals[dateStr][name][type] = !manualMeals[dateStr][name][type];
+            addLog(name, dateStr, 'meal', { meal: type, to: manualMeals[dateStr][name][type] });
+            manualMeals[dateStr][name].editedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            dbUpdate({ ['manualMeals/' + dateStr + '/' + name]: manualMeals[dateStr][name], logs: activityLogs });
+            renderAll();
+        }
+
+        // Day-wise Mill Off (user clicks on a day)
+        window.toggleMillOff = function(name, dateStr) {
+            if (!isAdmin && !userMillOffAllowed) {
+                alert("Admin ekhon Mill Off bondho rekheche. Admin-er sathe jogajog korun.");
+                return;
+            }
+            const idx = offTokens.findIndex(t => t.name === name && t.date === dateStr);
+            if (idx >= 0) {
+                offTokens.splice(idx, 1);
+                addLog(name, dateStr, 'on');
+            } else {
+                offTokens.push({ name, date: dateStr });
+                addLog(name, dateStr, 'off');
+            }
+            dbUpdate({ offTokens, logs: activityLogs });
+            renderAll();
+        }
+
+        window.setUserMillOffAccess = function(allowed) {
+            if (!isAdmin) return;
+            userMillOffAllowed = allowed;
+            dbUpdate({ userMillOffAllowed });
+            renderAll();
+        }
+
+        // ===== Admin login =====
+        window.openAdminLogin = function() {
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminLoginError').classList.add('hidden');
+            const modal = document.getElementById('adminLoginModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('adminPasswordInput').focus();
+        }
+
+        window.closeAdminLogin = function() {
+            const modal = document.getElementById('adminLoginModal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        window.adminLogin = function() {
+            const val = document.getElementById('adminPasswordInput').value;
+            if (val === ADMIN_PASSWORD) {
+                isAdmin = true;
+                try { sessionStorage.setItem('millAdmin', '1'); } catch (e) {}
+                closeAdminLogin();
+                renderAll();
+            } else {
+                document.getElementById('adminLoginError').classList.remove('hidden');
+            }
+        }
+
+        window.adminLogout = function() {
+            isAdmin = false;
+            try { sessionStorage.removeItem('millAdmin'); } catch (e) {}
+            renderAll();
+        }
+
+        // ===== Admin: members =====
+        function renderMembers() {
+            const container = document.getElementById('memberList');
+            container.innerHTML = '';
+            members.forEach((m, index) => {
+                container.innerHTML += `
+                    <div class="flex items-center bg-slate-100 border border-slate-200 rounded-full px-3 py-1 text-xs">
+                        <span class="mr-2 font-semibold text-slate-700">${m}</span>
+                        <button onclick="editMember(${index})" class="text-blue-600 hover:text-blue-800 mr-1.5 font-medium">Rename</button>
+                        <button onclick="deleteMember(${index})" class="text-red-500 hover:text-red-700 font-bold">×</button>
+                    </div>`;
+            });
+        }
+
+        function renderMemberSelect() {
+            const select = document.getElementById('offMemberSelect');
+            const prev = select.value;
+            select.innerHTML = '';
+            members.forEach(m => { select.innerHTML += `<option value="${m}">${m}</option>`; });
+            if (members.includes(prev)) select.value = prev;
+        }
+
+        function renderAdminAutoList() {
+            const container = document.getElementById('adminAutoList');
+            container.innerHTML = '';
+            members.forEach(m => {
+                const dChecked = autoSettings[m]?.dujur ? 'checked' : '';
+                const rChecked = autoSettings[m]?.rat ? 'checked' : '';
+                container.innerHTML += `
+                    <div class="flex items-center justify-between bg-white p-2.5 rounded-xl border border-blue-100 text-xs shadow-2xs">
+                        <span class="font-bold text-slate-800">${m}</span>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" ${dChecked} onchange="toggleAutoSetting('${m}', 'dujur', this.checked)" class="w-4 h-4 text-blue-600 rounded">
+                                <span class="font-medium text-slate-700">Dupur Auto</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" ${rChecked} onchange="toggleAutoSetting('${m}', 'rat', this.checked)" class="w-4 h-4 text-blue-600 rounded">
+                                <span class="font-medium text-slate-700">Rat Auto</span>
+                            </label>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        window.addMember = function() {
+            if (!isAdmin) return;
+            const input = document.getElementById('memberNameInput');
+            const name = input.value.trim();
+            if (INVALID_NAME.test(name)) {
+                alert("Nam-e . $ # [ ] / ei chinho gulo use kora jabe na!");
+                return;
+            }
+            if (name && !members.includes(name)) {
+                members.push(name);
+                autoSettings[name] = { dujur: false, rat: false };
+                input.value = '';
+                dbUpdate({ members, ['autoSettings/' + name]: autoSettings[name] });
+                renderAll();
+            }
+        }
+
+        window.deleteMember = function(index) {
+            if (!isAdmin) return;
+            const name = members[index];
+            if (!confirm(`"${name}" ke delete korben? Tar sob mill data muche jabe.`)) return;
+            members.splice(index, 1);
+            delete autoSettings[name];
+            offTokens = offTokens.filter(t => t.name !== name);
+            activityLogs = activityLogs.filter(l => l.name !== name);
+            // Delete this member's data from Firebase permanently (every path that holds it)
+            const updates = { members, ['autoSettings/' + name]: null, offTokens, logs: activityLogs };
+            Object.keys(manualMeals).forEach(date => {
+                if (manualMeals[date] && manualMeals[date][name]) {
+                    delete manualMeals[date][name];
+                    updates['manualMeals/' + date + '/' + name] = null;
+                }
+                if (manualMeals[date] && Object.keys(manualMeals[date]).length === 0) delete manualMeals[date];
+            });
+            openMembers.delete(name);
+            dbUpdate(updates)
+                .then(() => get(ref(db, 'millData/members')))
+                .then(snap => {
+                    const stillThere = Object.values(snap.val() || {}).includes(name);
+                    if (stillThere) alert(`"${name}" Firebase theke muchhe jayni! Onno kono device-e purano page khola thakte pare. Shob device-e page refresh kore abar delete korun.`);
+                })
+                .catch(() => {});
+            renderAll();
+        }
+
+        window.editMember = function(index) {
+            if (!isAdmin) return;
+            const oldName = members[index];
+            const newName = (prompt("Notun nam din:", oldName) || '').trim();
+            if (!newName || newName === oldName || members.includes(newName)) return;
+            if (INVALID_NAME.test(newName)) {
+                alert("Nam-e . $ # [ ] / ei chinho gulo use kora jabe na!");
+                return;
+            }
+
+            members[index] = newName;
+            autoSettings[newName] = autoSettings[oldName] || { dujur: false, rat: false };
+            delete autoSettings[oldName];
+            // keep old history under the new name
+            offTokens.forEach(t => { if (t.name === oldName) t.name = newName; });
+            activityLogs.forEach(l => { if (l.name === oldName) l.name = newName; });
+            const updates = { members, ['autoSettings/' + oldName]: null, ['autoSettings/' + newName]: autoSettings[newName], offTokens, logs: activityLogs };
+            Object.keys(manualMeals).forEach(date => {
+                if (manualMeals[date] && manualMeals[date][oldName]) {
+                    manualMeals[date][newName] = manualMeals[date][oldName];
+                    delete manualMeals[date][oldName];
+                    updates['manualMeals/' + date + '/' + oldName] = null;
+                    updates['manualMeals/' + date + '/' + newName] = manualMeals[date][newName];
+                }
+            });
+            if (openMembers.has(oldName)) { openMembers.delete(oldName); openMembers.add(newName); }
+            dbUpdate(updates);
+            renderAll();
+        }
+
+        window.toggleAutoSetting = function(name, type, status) {
+            if (!isAdmin) return;
+            if (!autoSettings[name]) autoSettings[name] = { dujur: false, rat: false };
+            const a = autoSettings[name];
+            let ranges = autoRanges(name, type).map(r => Object.assign({}, r));
+            if (status) {
+                // start a new auto period from today (past days are NOT touched)
+                if (!ranges.some(r => !r.to)) ranges.push({ from: nowStr() });
+            } else {
+                // stop auto from today; days already counted stay as they are
+                const y = yesterdayStr();
+                ranges = ranges.map(r => r.to ? r : { from: r.from, to: y }).filter(r => r.to >= r.from);
+            }
+            a[type] = status;
+            a[type + 'Ranges'] = ranges;
+            dbUpdate({ ['autoSettings/' + name]: a });
+            renderAll();
+        }
+
+        // ===== Admin: multi-date mill off =====
+        // ----- Multi-select calendar -----
+        let calYear = today.getFullYear();
+        let calMonth = today.getMonth(); // 0-11
+
+        window.renderCalendar = function() {
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            document.getElementById('calTitle').innerText = `${monthNames[calMonth]} ${calYear}`;
+
+            const name = document.getElementById('offMemberSelect').value;
+            const firstDay = new Date(calYear, calMonth, 1).getDay();
+            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+            const mm = String(calMonth + 1).padStart(2, '0');
+
+            let html = '';
+            for (let i = 0; i < firstDay; i++) html += `<span></span>`;
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${calYear}-${mm}-${String(d).padStart(2, '0')}`;
+                const selected = selectedDatesList.includes(dateStr);
+                const alreadyOff = name && isMillOff(name, dateStr);
+                const isToday = dateStr === todayStr;
+
+                let cls = 'h-9 rounded-lg text-sm font-semibold transition ';
+                if (alreadyOff) cls += 'bg-red-100 text-red-400 line-through cursor-not-allowed';
+                else if (selected) cls += 'bg-[#D97706] text-white';
+                else if (isToday) cls += 'border border-indigo-500 text-indigo-700 hover:bg-amber-50';
+                else cls += 'text-slate-700 hover:bg-amber-50';
+
+                html += alreadyOff
+                    ? `<button disabled title="Already off" class="${cls}">${d}</button>`
+                    : `<button onclick="toggleCalDate('${dateStr}')" class="${cls}">${d}</button>`;
+            }
+            document.getElementById('calGrid').innerHTML = html;
+        }
+
+        window.toggleCalPopup = function(e) {
+            e.stopPropagation();
+            document.getElementById('calPopup').classList.toggle('hidden');
+        }
+
+        window.closeCalPopup = function() {
+            document.getElementById('calPopup').classList.add('hidden');
+        }
+
+        // Click outside the calendar closes it (composedPath is safe even after re-render)
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('calWrapper');
+            if (wrapper && !e.composedPath().includes(wrapper)) closeCalPopup();
+        });
+
+        function updateCalTriggerText() {
+            const el = document.getElementById('calTriggerText');
+            if (!el) return;
+            const n = selectedDatesList.length;
+            el.innerText = n === 0 ? 'Date select korun...' : `${n} ti date select kora hoyeche`;
+        }
+
+        window.toggleCalDate = function(dateStr) {
+            const i = selectedDatesList.indexOf(dateStr);
+            if (i >= 0) selectedDatesList.splice(i, 1);
+            else selectedDatesList.push(dateStr);
+            selectedDatesList.sort();
+            renderSelectedDatesTags();
+        }
+
+        window.calChangeMonth = function(delta) {
+            calMonth += delta;
+            if (calMonth < 0) { calMonth = 11; calYear--; }
+            if (calMonth > 11) { calMonth = 0; calYear++; }
+            renderCalendar();
+        }
+
+        window.calToday = function() {
+            calYear = today.getFullYear();
+            calMonth = today.getMonth();
+            renderCalendar();
+        }
+
+        window.calClear = function() {
+            selectedDatesList = [];
+            renderSelectedDatesTags();
+        }
+
+        window.removeSelectedDate = function(index) {
+            selectedDatesList.splice(index, 1);
+            renderSelectedDatesTags();
+        }
+
+        function renderSelectedDatesTags() {
+            renderCalendar();
+            updateCalTriggerText();
+            const container = document.getElementById('selectedDatesContainer');
+            container.innerHTML = '';
+            if (selectedDatesList.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400 italic">Kono date select kora hoyni.</span>`;
+                return;
+            }
+            selectedDatesList.forEach((d, idx) => {
+                container.innerHTML += `
+                    <div class="bg-amber-100 border border-amber-300 text-amber-900 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span>${d}</span>
+                        <button onclick="removeSelectedDate(${idx})" class="font-bold hover:text-red-600">×</button>
+                    </div>`;
+            });
+        }
+
+        function renderTokens() {
+            const container = document.getElementById('tokenContainer');
+            container.innerHTML = '';
+            if (offTokens.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">Kono mill off token nei.</span>`;
+                return;
+            }
+            offTokens.forEach((token, index) => {
+                container.innerHTML += `
+                    <div class="inline-flex items-center bg-red-50 border border-red-200 text-red-800 text-[11px] px-2.5 py-1 rounded-lg gap-1.5 m-0.5">
+                        <span><strong>${token.name}</strong> (${token.date})</span>
+                        <button onclick="removeToken(${index})" class="text-red-700 font-bold hover:text-red-900">×</button>
+                    </div>`;
+            });
+        }
+
+        window.addOffToken = function() {
+            if (!isAdmin && !userMillOffAllowed) {
+                alert("Admin ekhon Mill Off bondho rekheche.");
+                return;
+            }
+            const name = document.getElementById('offMemberSelect').value;
+            let addedCount = 0;
+
+            if (selectedDatesList.length === 0) {
+                alert("Doya kore calendar theke multiple date select korun!");
+                return;
+            }
+            selectedDatesList.forEach(dateStr => {
+                if (!offTokens.some(t => t.name === name && t.date === dateStr)) {
+                    offTokens.push({ name, date: dateStr });
+                    addLog(name, dateStr, 'off');
+                    addedCount++;
+                }
+            });
+            selectedDatesList = [];
+
+            if (addedCount > 0) {
+                dbUpdate({ offTokens, logs: activityLogs });
+                renderAll();
+                alert(`${addedCount} ti diner jonno mill off kora hoyeche!`);
+            } else {
+                renderAll();
+                alert("Ei tarikhgulo already off kora ache!");
+            }
+        }
+
+        window.removeToken = function(index) {
+            if (!isAdmin) return;
+            const removed = offTokens[index];
+            offTokens.splice(index, 1);
+            if (removed) addLog(removed.name, removed.date, 'on');
+            dbUpdate({ offTokens, logs: activityLogs });
+            renderAll();
+        }
+
+        // ===== Admin: month report =====
+        window.generateAdminMonthReport = function() {
+            if (!isAdmin) return;
+            const selectedMonth = document.getElementById('adminReportMonthSelect').value;
+            if (!selectedMonth) {
+                alert("Doya kore month select korun!");
+                return;
+            }
+            const [sYear, sMonth] = selectedMonth.split('-');
+            const daysInMonth = new Date(Number(sYear), Number(sMonth), 0).getDate();
+            const tbody = document.getElementById('adminReportTableBody');
+            tbody.innerHTML = '';
+
+            document.getElementById('adminReportTitle').innerText = `Month-wise Report (${sMonth}-${sYear})`;
+
+            members.forEach(m => {
+                let totalDupur = 0, totalRat = 0;
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${sYear}-${sMonth}-${String(day).padStart(2, '0')}`;
+                    const status = getMealStatus(m, dateStr);
+                    if (status.dujurActive) totalDupur++;
+                    if (status.ratActive) totalRat++;
+                }
+                tbody.innerHTML += `
+                    <tr class="hover:bg-purple-50/50">
+                        <td class="p-3 font-bold text-slate-800">${m}</td>
+                        <td class="p-3 text-center font-semibold text-emerald-600">${totalDupur} Mill</td>
+                        <td class="p-3 text-center font-semibold text-emerald-600">${totalRat} Mill</td>
+                        <td class="p-3 text-center font-black text-purple-700">${totalDupur + totalRat} Mill</td>
+                    </tr>`;
+            });
+
+            const modal = document.getElementById('adminReportModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+
+        // ===== Date-wise PDF report (print -> Save as PDF) =====
+        window.printDateWiseReport = function() {
+            if (!isAdmin) return;
+            const selectedMonth = document.getElementById('adminReportMonthSelect').value;
+            if (!selectedMonth) { alert("Doya kore month select korun!"); return; }
+            if (members.length === 0) { alert("Kono member nei!"); return; }
+
+            const [sYear, sMonth] = selectedMonth.split('-');
+            const daysInMonth = new Date(Number(sYear), Number(sMonth), 0).getDate();
+            const weekDays = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            const totals = {};
+            members.forEach(m => totals[m] = { d: 0, r: 0, off: 0 });
+
+            let headTop = `<th rowspan="2">তারিখ</th><th rowspan="2">বার</th>`;
+            let headSub = '';
+            members.forEach(m => {
+                headTop += `<th colspan="2">${esc(m)}</th>`;
+                headSub += `<th>Dupur</th><th>Rat</th>`;
+            });
+            headTop += `<th rowspan="2">Total</th>`;
+
+            let body = '';
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${sYear}-${sMonth}-${String(day).padStart(2, '0')}`;
+                const wd = weekDays[new Date(Number(sYear), Number(sMonth) - 1, day).getDay()];
+                let row = `<td class="dt">${dateStr}</td><td class="wd">${wd}</td>`;
+                let dayTotal = 0;
+                members.forEach(m => {
+                    const st = getMealStatus(m, dateStr);
+                    if (st.isOff) {
+                        totals[m].off++;
+                        row += `<td colspan="2" class="off">OFF</td>`;
+                    } else {
+                        if (st.dujurActive) totals[m].d++;
+                        if (st.ratActive) totals[m].r++;
+                        dayTotal += st.userTotalMill;
+                        row += `<td class="${st.dujurActive ? 'p' : 'f'}">${st.dujurActive ? 'P' : 'F'}</td>`;
+                        row += `<td class="${st.ratActive ? 'p' : 'f'}">${st.ratActive ? 'P' : 'F'}</td>`;
+                    }
+                });
+                row += `<td class="tot">${dayTotal}</td>`;
+                body += `<tr>${row}</tr>`;
+            }
+
+            let footRow = `<td colspan="2">Total Mill</td>`;
+            let offRow = `<td colspan="2">Off Din</td>`;
+            let grand = 0;
+            members.forEach(m => {
+                footRow += `<td>${totals[m].d}</td><td>${totals[m].r}</td>`;
+                offRow += `<td colspan="2">${totals[m].off}</td>`;
+                grand += totals[m].d + totals[m].r;
+            });
+            footRow += `<td>${grand}</td>`;
+            offRow += `<td></td>`;
+
+            const generated = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+
+            const totalOffDays = members.reduce((acc, m) => acc + totals[m].off, 0);
+            const html = `<!DOCTYPE html>
+<html lang="bn"><head><meta charset="UTF-8">
+<title>Mill Report - ${monthNames[Number(sMonth) - 1]} ${sYear}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700;800&display=swap">
+<style>
+  @page { size: A4 portrait; margin: 8mm; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans Bengali', 'Segoe UI', Arial, sans-serif; color: #1e293b; font-size: 11.5px; line-height: 1.3; background: #f1f5f9; }
+  .bar { padding: 10px; text-align: center; }
+  .bar button { background: #4f46e5; color: #fff; border: 0; padding: 9px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+  .page { width: 194mm; height: 279mm; margin: 0 auto 12px; background: #fff; display: flex; flex-direction: column; gap: 3mm; padding: 0; }
+  .top { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, #4338ca, #6366f1); color: #fff; border-radius: 3mm; padding: 4mm 5mm; }
+  .top h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: .3px; }
+  .top .sub { opacity: .9; font-size: 11px; margin-top: 1px; }
+  .grand { text-align: right; background: rgba(255,255,255,.18); border-radius: 2.5mm; padding: 2mm 4mm; }
+  .grand span { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; opacity: .9; }
+  .grand b { font-size: 20px; font-weight: 800; }
+  .stats { display: flex; gap: 3mm; }
+  .stat { flex: 1; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 2.5mm; padding: 1.5mm 3mm; display: flex; justify-content: space-between; align-items: center; }
+  .stat span { color: #64748b; font-size: 10px; font-weight: 600; }
+  .stat b { font-size: 13px; color: #4338ca; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 10.5px; color: #475569; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .chip { display: inline-block; min-width: 22px; text-align: center; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
+  .tw { flex: 1; position: relative; min-height: 0; }
+  table { position: absolute; inset: 0; width: 100%; height: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #cbd5e1; padding: 0 3px; text-align: center; vertical-align: middle; }
+  thead th { background: #4338ca; color: #fff; font-weight: 700; }
+  thead tr:nth-child(2) th { background: #6366f1; font-weight: 600; font-size: 10.5px; }
+  td.wd { text-align: left; white-space: nowrap; color: #475569; padding-left: 6px; }
+  td.dt { white-space: nowrap; font-weight: 600; }
+  td.p, .chip.p { background: #d1fae5; color: #047857; font-weight: 800; }
+  td.f, .chip.f { background: #ffe4e6; color: #e11d48; font-weight: 800; }
+  td.off, .chip.off { background: #fef3c7; color: #b45309; font-weight: 800; }
+  td.tot { font-weight: 800; color: #4338ca; background: #eef2ff; }
+  tbody tr:nth-child(even) td.dt, tbody tr:nth-child(even) td.wd { background: #f8fafc; }
+  tfoot td { background: #e0e7ff; font-weight: 800; color: #312e81; }
+  .foot { display: flex; justify-content: space-between; color: #94a3b8; font-size: 9.5px; }
+  @media print {
+    body { background: #fff; }
+    .bar { display: none; }
+    .page { margin: 0; width: 100%; height: 281mm; }
+  }
+</style></head><body>
+<div class="bar"><button onclick="window.print()">Print / Save as PDF</button></div>
+<div class="page">
+  <div class="top">
+    <div>
+      <h1>Mill Report</h1>
+      <div class="sub">${monthNames[Number(sMonth) - 1]} ${sYear} &middot; Date-wise mill report</div>
+    </div>
+    <div class="grand"><span>Maser Grand Total</span><b>${grand} Mill</b></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span>Total Member</span><b>${members.length}</b></div>
+    <div class="stat"><span>Mase Din</span><b>${daysInMonth}</b></div>
+    <div class="stat"><span>Total Off Din</span><b>${totalOffDays}</b></div>
+  </div>
+  <div class="legend">
+    <span><b class="chip p">P</b> Kheyeche</span>
+    <span><b class="chip f">F</b> Khai nai</span>
+    <span><b class="chip off">OFF</b> Mill Off chilo</span>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr>${headTop}</tr><tr>${headSub}</tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr>${footRow}</tr><tr>${offRow}</tr></tfoot>
+    </table>
+  </div>
+  <div class="foot"><span>Generated: ${generated}</span><span>Mill Dashboard System</span></div>
+</div>
+</body></html>`;
+
+            const w = window.open('', '_blank');
+            if (!w) { alert("Popup block kora ache. Browser-e popup allow korun."); return; }
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+            setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 900);
+        }
+
+        window.closeAdminReportModal = function() {
+            const modal = document.getElementById('adminReportModal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        initFirebaseSync();
+        renderAll();
+    </script>
+</body>
+</html>
