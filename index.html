@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -29,9 +30,47 @@
                 </div>
             </div>
 
-            <div class="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3 text-right w-full md:w-auto flex md:flex-col justify-between items-center md:items-end">
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Maser Grand Total</span>
-                <span id="grandTotalText" class="text-2xl font-black text-indigo-600">0 Mill</span>
+            <!-- Grand Total + Today's Mill Status -->
+            <div class="w-full md:w-auto flex flex-col gap-3">
+
+                <!-- Existing Grand Total -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3 text-right w-full flex md:flex-col justify-between items-center md:items-end">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Maser Grand Total</span>
+                    <span id="grandTotalText" class="text-2xl font-black text-indigo-600">0 Mill</span>
+                </div>
+
+                <!-- NEW: Today's Mill Status -->
+                <div class="bg-white border border-slate-200 rounded-xl p-4 w-full md:w-72 shadow-sm space-y-3">
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-extrabold text-slate-700 uppercase">Today's Mill Status</span>
+                        <span id="todayStatusDate" class="text-[10px] font-bold text-slate-400"></span>
+                    </div>
+
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                        <span class="text-[10px] font-bold text-emerald-700 uppercase">Running Today</span>
+                        <div id="todayRunningTotal" class="text-xl font-black text-emerald-600">0 Mill</div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs font-bold text-emerald-700 mb-1.5">
+                            Mill Running
+                        </div>
+                        <div id="todayRunningMembers" class="text-xs text-slate-600 space-y-1">
+                            No running mill.
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-2">
+                        <div class="text-xs font-bold text-rose-600 mb-1.5">
+                            Mill Off
+                        </div>
+                        <div id="todayOffMembers" class="text-xs text-slate-600 space-y-1">
+                            No mill off.
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </header>
 
@@ -79,24 +118,24 @@
             </div>
         </div>
 
-        <!-- Mill Off Setup (admin always, users when admin allows) -->
-            <div id="millOffSection" class="hidden bg-amber-50/60 border border-amber-200 rounded-2xl shadow-sm p-5 space-y-3">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <h3 class="text-xs font-bold text-amber-900 uppercase">Mill Off From</h3>
-                    <label id="adminOnlyToggle" class="hidden items-center gap-2 bg-white border border-amber-300 rounded-xl px-3 py-1.5 cursor-pointer">
-                        <input type="checkbox" id="userMillOffToggle" onchange="setUserMillOffAccess(this.checked)" class="w-4 h-4 rounded">
-                        <span class="text-xs font-bold text-amber-900">User Mill Cut off</span>
-                    </label>
-                </div>
+        <!-- Mill Off Setup -->
+        <div id="millOffSection" class="hidden bg-amber-50/60 border border-amber-200 rounded-2xl shadow-sm p-5 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="text-xs font-bold text-amber-900 uppercase">Mill Off From</h3>
+                <label id="adminOnlyToggle" class="hidden items-center gap-2 bg-white border border-amber-300 rounded-xl px-3 py-1.5 cursor-pointer">
+                    <input type="checkbox" id="userMillOffToggle" onchange="setUserMillOffAccess(this.checked)" class="w-4 h-4 rounded">
+                    <span class="text-xs font-bold text-amber-900">User Mill Cut off</span>
+                </label>
+            </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                    <div>
-                        <label class="block text-xs font-bold text-amber-900 mb-1.5">Member Select Korun:</label>
-                        <select id="offMemberSelect" onchange="renderCalendar()" class="w-full border border-amber-300 rounded-xl px-3.5 py-2.5 text-sm bg-white font-medium focus:outline-none"></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-amber-900 mb-1.5">Calendar theke Date Select Korun:</label>
-                        <div id="calWrapper" class="relative">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div>
+                    <label class="block text-xs font-bold text-amber-900 mb-1.5">Member Select Korun:</label>
+                    <select id="offMemberSelect" onchange="renderCalendar()" class="w-full border border-amber-300 rounded-xl px-3.5 py-2.5 text-sm bg-white font-medium focus:outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-amber-900 mb-1.5">Calendar theke Date Select Korun:</label>
+                    <div id="calWrapper" class="relative">
                         <button id="calTrigger" onclick="toggleCalPopup(event)" class="w-full flex items-center justify-between border border-amber-300 rounded-xl px-3.5 py-2.5 text-sm bg-white text-slate-600 text-left focus:outline-none">
                             <span id="calTriggerText">Date select korun...</span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -117,26 +156,25 @@
                             </div>
                             <button onclick="closeCalPopup()" class="w-full mt-2 bg-[#D97706] hover:bg-amber-700 text-white py-2 rounded-lg text-xs font-bold transition">Done</button>
                         </div>
-                        </div>
                     </div>
                 </div>
-
-                <div class="bg-white p-3 rounded-xl border border-amber-200 space-y-1">
-                    <span class="block text-xs font-bold text-amber-900">Selected Dates:</span>
-                    <div id="selectedDatesContainer" class="flex flex-wrap gap-1.5">
-                        <span class="text-xs text-slate-400 italic">Kono date select kora hoyni.</span>
-                    </div>
-                </div>
-
-                <div class="flex justify-end pt-1">
-                    <button onclick="addOffToken()" class="bg-[#D97706] hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">Mill Off Korun</button>
-                </div>
-
-                <div id="tokenContainer" class="hidden bg-white p-3 rounded-xl border border-amber-200 text-xs text-slate-400">Kono mill off token nei.</div>
             </div>
 
+            <div class="bg-white p-3 rounded-xl border border-amber-200 space-y-1">
+                <span class="block text-xs font-bold text-amber-900">Selected Dates:</span>
+                <div id="selectedDatesContainer" class="flex flex-wrap gap-1.5">
+                    <span class="text-xs text-slate-400 italic">Kono date select kora hoyni.</span>
+                </div>
+            </div>
 
-        <!-- USER LIST (month-wise) -->
+            <div class="flex justify-end pt-1">
+                <button onclick="addOffToken()" class="bg-[#D97706] hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">Mill Off Korun</button>
+            </div>
+
+            <div id="tokenContainer" class="hidden bg-white p-3 rounded-xl border border-amber-200 text-xs text-slate-400">Kono mill off token nei.</div>
+        </div>
+
+        <!-- USER LIST -->
         <main class="space-y-4">
             <div class="flex items-center justify-between">
                 <h2 id="listHeading" class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Members Mill List</h2>
@@ -192,7 +230,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getDatabase, ref, set, update, get, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-        // ===== ADMIN PASSWORD (ekhane nijer password din) =====
+        // ===== ADMIN PASSWORD =====
         const ADMIN_PASSWORD = "admin123";
 
         const firebaseConfig = {
@@ -209,7 +247,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Default data - used ONLY to seed a brand-new empty database
         const DEFAULT_MEMBERS = ["Bosir", "Nadim", "Noman", "Robi", "Sadik", "Tanjil"];
         const DEFAULT_AUTO = {
             "Bosir": { dujur: false, rat: false },
@@ -219,6 +256,7 @@
             "Sadik": { dujur: false, rat: false },
             "Tanjil": { dujur: true, rat: true }
         };
+
         let members = [];
         let autoSettings = {};
         let offTokens = [];
@@ -227,8 +265,8 @@
         let isCloudDataLoaded = false;
         let isAdmin = false;
         let activityLogs = [];
-        let userMillOffAllowed = true; // admin controls whether users can use Mill Off
-        let openMembers = new Set(); // which user lists are expanded
+        let userMillOffAllowed = true;
+        let openMembers = new Set();
 
         try { isAdmin = sessionStorage.getItem('millAdmin') === '1'; } catch (e) {}
 
@@ -249,6 +287,7 @@
             onValue(ref(db, 'millData'), (snapshot) => {
                 const data = snapshot.val();
                 document.getElementById('dbBanner').classList.add('hidden');
+
                 if (data) {
                     members = data.members ? Object.values(data.members) : [];
                     autoSettings = data.autoSettings || {};
@@ -258,7 +297,6 @@
                     activityLogs = data.logs ? Object.values(data.logs) : [];
                     isCloudDataLoaded = true;
                 } else {
-                    // brand-new empty database: seed defaults once
                     members = [...DEFAULT_MEMBERS];
                     autoSettings = JSON.parse(JSON.stringify(DEFAULT_AUTO));
                     isCloudDataLoaded = true;
@@ -278,9 +316,6 @@
                 .catch((error) => console.error("Firebase save error: ", error));
         }
 
-        // Granular write: only touches the given paths, so a stale/offline device
-        // can never overwrite the whole database (that was bringing deleted users back).
-        // A value of null (or an empty list) deletes that path from Firebase permanently.
         function dbUpdate(updates) {
             if (!isCloudDataLoaded) {
                 alert("Firebase-er sathe connect hoyni, tai save kora jabe na! Upore lal message check korun.");
@@ -305,6 +340,10 @@
         window.renderAll = function() {
             applyAdminVisibility();
             renderUserList();
+
+            // NEW: Update Today's Mill Status
+            renderTodayMillStatus();
+
             if (isAdmin || userMillOffAllowed) {
                 renderMemberSelect();
                 renderSelectedDatesTags();
@@ -379,8 +418,7 @@
             renderAll();
         }
 
-        // ===== Auto meal: applies day-by-day from the date it was turned on =====
-        // autoSettings[name] = { dujur, rat, dujurRanges:[{from,to?}], ratRanges:[{from,to?}] }
+        // ===== Auto meal =====
         function nowStr() {
             const d = new Date();
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -396,11 +434,9 @@
             const a = autoSettings[name] || {};
             const r = a[type + 'Ranges'];
             if (r) return Object.values(r);
-            // old data (before this update): auto was on for every day
             return a[type] ? [{ from: '1970-01-01' }] : [];
         }
 
-        // Auto counts only for days inside an ON period, and only up to today (future days stay F until they arrive)
         function autoActiveOn(name, type, dateStr) {
             if (dateStr > nowStr()) return false;
             return autoRanges(name, type).some(r => dateStr >= r.from && (!r.to || dateStr <= r.to));
@@ -427,6 +463,70 @@
 
             const userTotalMill = (dujurActive ? 1 : 0) + (ratActive ? 1 : 0);
             return { isOff, dujurActive, ratActive, userTotalMill, editInfo };
+        }
+
+        // ===== NEW: Today's Mill Status Dashboard =====
+        function renderTodayMillStatus() {
+
+            const date = nowStr();
+
+            let runningTotal = 0;
+            let runningHTML = '';
+            let offHTML = '';
+
+            const today = new Date();
+            const formattedDate = today.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+
+            document.getElementById('todayStatusDate').innerText = formattedDate;
+
+            members.forEach(name => {
+
+                const status = getMealStatus(name, date);
+
+                // Mill Off members
+                if (status.isOff) {
+
+                    offHTML += `
+                        <div class="flex items-center gap-2 bg-rose-50 rounded-lg px-2.5 py-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                            <span class="font-semibold text-rose-700">${name}</span>
+                        </div>
+                    `;
+
+                }
+
+                // Running members
+                else if (status.userTotalMill > 0) {
+
+                    runningTotal += status.userTotalMill;
+
+                    runningHTML += `
+                        <div class="flex items-center justify-between bg-emerald-50 rounded-lg px-2.5 py-1.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span class="font-semibold text-emerald-700">${name}</span>
+                            </div>
+                            <span class="font-bold text-emerald-700">
+                                ${status.userTotalMill} Mill
+                            </span>
+                        </div>
+                    `;
+                }
+
+            });
+
+            document.getElementById('todayRunningTotal').innerText =
+                `${runningTotal} Mill`;
+
+            document.getElementById('todayRunningMembers').innerHTML =
+                runningHTML || '<span class="text-slate-400">No running mill.</span>';
+
+            document.getElementById('todayOffMembers').innerHTML =
+                offHTML || '<span class="text-slate-400">No mill off.</span>';
         }
 
         // ===== USER LIST (month-wise) =====
@@ -531,7 +631,6 @@
             renderUserList();
         }
 
-        // Click P/F to change a single meal for that date
         window.toggleDailyMeal = function(name, type, dateStr) {
             if (isMillOff(name, dateStr)) {
                 alert("Ei member-er ei tarikhe mill off kora ache!");
@@ -552,7 +651,6 @@
             renderAll();
         }
 
-        // Day-wise Mill Off (user clicks on a day)
         window.toggleMillOff = function(name, dateStr) {
             if (!isAdmin && !userMillOffAllowed) {
                 alert("Admin ekhon Mill Off bondho rekheche. Admin-er sathe jogajog korun.");
@@ -681,7 +779,6 @@
             delete autoSettings[name];
             offTokens = offTokens.filter(t => t.name !== name);
             activityLogs = activityLogs.filter(l => l.name !== name);
-            // Delete this member's data from Firebase permanently (every path that holds it)
             const updates = { members, ['autoSettings/' + name]: null, offTokens, logs: activityLogs };
             Object.keys(manualMeals).forEach(date => {
                 if (manualMeals[date] && manualMeals[date][name]) {
@@ -714,7 +811,6 @@
             members[index] = newName;
             autoSettings[newName] = autoSettings[oldName] || { dujur: false, rat: false };
             delete autoSettings[oldName];
-            // keep old history under the new name
             offTokens.forEach(t => { if (t.name === oldName) t.name = newName; });
             activityLogs.forEach(l => { if (l.name === oldName) l.name = newName; });
             const updates = { members, ['autoSettings/' + oldName]: null, ['autoSettings/' + newName]: autoSettings[newName], offTokens, logs: activityLogs };
@@ -737,10 +833,8 @@
             const a = autoSettings[name];
             let ranges = autoRanges(name, type).map(r => Object.assign({}, r));
             if (status) {
-                // start a new auto period from today (past days are NOT touched)
                 if (!ranges.some(r => !r.to)) ranges.push({ from: nowStr() });
             } else {
-                // stop auto from today; days already counted stay as they are
                 const y = yesterdayStr();
                 ranges = ranges.map(r => r.to ? r : { from: r.from, to: y }).filter(r => r.to >= r.from);
             }
@@ -751,9 +845,8 @@
         }
 
         // ===== Admin: multi-date mill off =====
-        // ----- Multi-select calendar -----
         let calYear = today.getFullYear();
-        let calMonth = today.getMonth(); // 0-11
+        let calMonth = today.getMonth();
 
         window.renderCalendar = function() {
             const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -794,7 +887,6 @@
             document.getElementById('calPopup').classList.add('hidden');
         }
 
-        // Click outside the calendar closes it (composedPath is safe even after re-render)
         document.addEventListener('click', (e) => {
             const wrapper = document.getElementById('calWrapper');
             if (wrapper && !e.composedPath().includes(wrapper)) closeCalPopup();
@@ -949,8 +1041,7 @@
             modal.classList.add('flex');
         }
 
-
-        // ===== Date-wise PDF report (print -> Save as PDF) =====
+        // ===== Date-wise PDF report =====
         window.printDateWiseReport = function() {
             if (!isAdmin) return;
             const selectedMonth = document.getElementById('adminReportMonthSelect').value;
