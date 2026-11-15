@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -39,7 +38,7 @@
                     <span id="grandTotalText" class="text-2xl font-black text-indigo-600">0 Mill</span>
                 </div>
 
-                <!-- NEW: Today's Mill Status -->
+                <!-- Today's Mill Status -->
                 <div class="bg-white border border-slate-200 rounded-xl p-4 w-full md:w-72 shadow-sm space-y-3">
 
                     <div class="flex justify-between items-center">
@@ -74,7 +73,7 @@
             </div>
         </header>
 
-        <!-- ADMIN PANEL (only visible after admin login) -->
+        <!-- ADMIN PANEL -->
         <div id="adminPanel" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-5">
             <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Admin Control Panel</h2>
 
@@ -226,11 +225,23 @@
         </div>
     </div>
 
+    <!-- Custom Mill Input Modal (For + / custom count) -->
+    <div id="customMealModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-xs w-full p-5 space-y-4 shadow-2xl">
+            <h3 id="customMealTitle" class="font-bold text-sm text-slate-900">Custom Mill Set Korun</h3>
+            <p class="text-xs text-slate-500">Eker odik Mill jog korun</p>
+            <input type="number" step="0.5" min="0" id="customMealInput" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-indigo-600 font-bold text-center text-lg">
+            <div class="flex justify-end gap-2 pt-1">
+                <button onclick="closeCustomMealModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition">Cancel</button>
+                <button onclick="saveCustomMeal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getDatabase, ref, set, update, get, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-        // ===== ADMIN PASSWORD =====
         const ADMIN_PASSWORD = "admin123";
 
         const firebaseConfig = {
@@ -268,6 +279,11 @@
         let userMillOffAllowed = true;
         let openMembers = new Set();
 
+        // Active custom popup parameters
+        let activeCustomName = '';
+        let activeCustomType = '';
+        let activeCustomDate = '';
+
         try { isAdmin = sessionStorage.getItem('millAdmin') === '1'; } catch (e) {}
 
         const today = new Date();
@@ -276,7 +292,6 @@
         document.getElementById('viewMonthSelect').value = thisMonth;
         document.getElementById('adminReportMonthSelect').value = thisMonth;
 
-        // ===== Firebase sync =====
         function showDbError(msg) {
             const el = document.getElementById('dbBanner');
             el.innerText = msg;
@@ -305,7 +320,7 @@
                 renderAll();
             }, (error) => {
                 console.error("Firebase read error: ", error);
-                showDbError("Firebase theke data ashche na! Karon: " + (error && error.message ? error.message : error) + " — Firebase Console > Realtime Database > Rules check korun (rules expire hoye jete pare).");
+                showDbError("Firebase theke data ashche na! Karon: " + (error && error.message ? error.message : error));
                 renderAll();
             });
         }
@@ -318,7 +333,7 @@
 
         function dbUpdate(updates) {
             if (!isCloudDataLoaded) {
-                alert("Firebase-er sathe connect hoyni, tai save kora jabe na! Upore lal message check korun.");
+                alert("Firebase-er sathe connect hoyni, tai save kora jabe na!");
                 return Promise.reject(new Error("not connected"));
             }
             const clean = {};
@@ -329,19 +344,16 @@
             });
             return update(ref(db, 'millData'), clean).catch((error) => {
                 console.error("Firebase update error: ", error);
-                alert("Firebase-e save hoyni! Karon: " + (error && error.message ? error.message : error));
+                alert("Firebase-e save hoyni!");
                 throw error;
             });
         }
 
         const INVALID_NAME = /[.$#\[\]\/]/;
 
-        // ===== Render =====
         window.renderAll = function() {
             applyAdminVisibility();
             renderUserList();
-
-            // NEW: Update Today's Mill Status
             renderTodayMillStatus();
 
             if (isAdmin || userMillOffAllowed) {
@@ -367,7 +379,6 @@
             document.getElementById('adminLogoutBtn').classList.toggle('hidden', !isAdmin);
         }
 
-        // ===== Mill Off / On activity log =====
         function addLog(name, date, action, extra) {
             activityLogs.push(Object.assign({ name, date, action, by: isAdmin ? 'Admin' : 'User', at: Date.now() }, extra || {}));
             if (activityLogs.length > 300) activityLogs = activityLogs.slice(-300);
@@ -390,9 +401,7 @@
                 let badge;
                 if (l.action === 'meal') {
                     const mealName = l.meal === 'dujur' ? 'Dupur' : 'Rat';
-                    badge = l.to
-                        ? `<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-bold">${mealName}: F → P</span>`
-                        : `<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-600 font-bold">${mealName}: P → F</span>`;
+                    badge = `<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-bold">${mealName}: ${l.val} Mill</span>`;
                 } else if (l.action === 'off') {
                     badge = `<span class="px-2 py-0.5 rounded-md bg-red-100 text-red-600 font-bold">Mill Off</span>`;
                 } else {
@@ -418,7 +427,6 @@
             renderAll();
         }
 
-        // ===== Auto meal =====
         function nowStr() {
             const d = new Date();
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -442,7 +450,6 @@
             return autoRanges(name, type).some(r => dateStr >= r.from && (!r.to || dateStr <= r.to));
         }
 
-        // ===== Meal status logic =====
         function isMillOff(name, date) {
             return offTokens.some(token => token.name === name && token.date === date);
         }
@@ -451,85 +458,65 @@
             let isOff = isMillOff(m, currentDate);
             let dateManual = manualMeals[currentDate]?.[m];
 
-            let dujurActive = false;
-            let ratActive = false;
+            let dujurVal = 0;
+            let ratVal = 0;
             let editInfo = "";
 
             if (!isOff) {
-                dujurActive = (dateManual && dateManual.dujur !== undefined) ? dateManual.dujur : autoActiveOn(m, 'dujur', currentDate);
-                ratActive = (dateManual && dateManual.rat !== undefined) ? dateManual.rat : autoActiveOn(m, 'rat', currentDate);
+                let defaultD = autoActiveOn(m, 'dujur', currentDate) ? 1 : 0;
+                let defaultR = autoActiveOn(m, 'rat', currentDate) ? 1 : 0;
+
+                dujurVal = (dateManual && dateManual.dujur !== undefined) ? Number(dateManual.dujur) : defaultD;
+                ratVal = (dateManual && dateManual.rat !== undefined) ? Number(dateManual.rat) : defaultR;
+
                 if (dateManual && dateManual.editedAt) editInfo = dateManual.editedAt;
             }
 
-            const userTotalMill = (dujurActive ? 1 : 0) + (ratActive ? 1 : 0);
-            return { isOff, dujurActive, ratActive, userTotalMill, editInfo };
+            const userTotalMill = dujurVal + ratVal;
+            return { isOff, dujurVal, ratVal, userTotalMill, editInfo };
         }
 
-        // ===== NEW: Today's Mill Status Dashboard =====
         function renderTodayMillStatus() {
-
             const date = nowStr();
-
             let runningTotal = 0;
             let runningHTML = '';
             let offHTML = '';
 
             const today = new Date();
-            const formattedDate = today.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-            });
-
+            const formattedDate = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             document.getElementById('todayStatusDate').innerText = formattedDate;
 
             members.forEach(name => {
-
                 const status = getMealStatus(name, date);
 
-                // Mill Off members
                 if (status.isOff) {
-
                     offHTML += `
                         <div class="flex items-center gap-2 bg-rose-50 rounded-lg px-2.5 py-1.5">
                             <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                             <span class="font-semibold text-rose-700">${name}</span>
                         </div>
                     `;
-
-                }
-
-                // Running members
-                else if (status.userTotalMill > 0) {
-
+                } else if (status.userTotalMill > 0) {
                     runningTotal += status.userTotalMill;
-
                     runningHTML += `
                         <div class="flex items-center justify-between bg-emerald-50 rounded-lg px-2.5 py-1.5">
                             <div class="flex items-center gap-2">
                                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                 <span class="font-semibold text-emerald-700">${name}</span>
                             </div>
-                            <span class="font-bold text-emerald-700">
-                                ${status.userTotalMill} Mill
+                            <span class="font-bold text-emerald-700 text-xs">
+                                Dupur: ${status.dujurVal}, Rat: ${status.ratVal} (${status.userTotalMill} Mill)
                             </span>
                         </div>
                     `;
                 }
-
             });
 
-            document.getElementById('todayRunningTotal').innerText =
-                `${runningTotal} Mill`;
-
-            document.getElementById('todayRunningMembers').innerHTML =
-                runningHTML || '<span class="text-slate-400">No running mill.</span>';
-
-            document.getElementById('todayOffMembers').innerHTML =
-                offHTML || '<span class="text-slate-400">No mill off.</span>';
+            document.getElementById('todayRunningTotal').innerText = `${runningTotal} Mill`;
+            document.getElementById('todayRunningMembers').innerHTML = runningHTML || '<span class="text-slate-400">No running mill.</span>';
+            document.getElementById('todayOffMembers').innerHTML = offHTML || '<span class="text-slate-400">No mill off.</span>';
         }
 
-        // ===== USER LIST (month-wise) =====
         function renderUserList() {
             const container = document.getElementById('memberListContainer');
             if (!isCloudDataLoaded) {
@@ -554,12 +541,18 @@
                     const dateStr = `${sYear}-${sMonth}-${String(day).padStart(2, '0')}`;
                     const dayName = daysOfWeek[new Date(Number(sYear), Number(sMonth) - 1, day).getDay()];
                     const s = getMealStatus(m, dateStr);
-                    if (s.dujurActive) totalD++;
-                    if (s.ratActive) totalR++;
+                    totalD += s.dujurVal;
+                    totalR += s.ratVal;
 
-                    const cell = (active, type) => {
+                    const cell = (val, type) => {
                         if (s.isOff) return `<span class="text-slate-300 font-bold">-</span>`;
-                        return `<button onclick="toggleDailyMeal('${m}', '${type}', '${dateStr}')" class="w-8 h-7 rounded-lg font-bold text-xs transition ${active ? 'bg-emerald-600 text-white' : 'bg-rose-100 text-rose-600'}">${active ? 'P' : 'F'}</button>`;
+                        const active = val > 0;
+                        return `
+                            <div class="inline-flex items-center gap-1">
+                                <button onclick="toggleDailyMeal('${m}', '${type}', '${dateStr}')" class="w-8 h-7 rounded-lg font-bold text-xs transition ${active ? 'bg-emerald-600 text-white' : 'bg-rose-100 text-rose-600'}">${active ? val : 'F'}</button>
+                                <button onclick="openCustomMealModal('${m}', '${type}', '${dateStr}', ${val})" class="w-5 h-7 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs" title="Custom Mill (+)">&plus;</button>
+                            </div>
+                        `;
                     };
 
                     const canOff = isAdmin || userMillOffAllowed;
@@ -577,8 +570,8 @@
                                 ${isToday ? '<span class="text-[10px] font-bold text-indigo-600 ml-1">Ajke</span>' : ''}
                                 ${s.editInfo ? `<span class="block text-[10px] text-amber-600 font-semibold">Edited: ${s.editInfo}</span>` : ''}
                             </td>
-                            <td class="p-2 text-center">${cell(s.dujurActive, 'dujur')}</td>
-                            <td class="p-2 text-center">${cell(s.ratActive, 'rat')}</td>
+                            <td class="p-2 text-center">${cell(s.dujurVal, 'dujur')}</td>
+                            <td class="p-2 text-center">${cell(s.ratVal, 'rat')}</td>
                             <td class="p-2 text-center font-bold text-indigo-600">${s.userTotalMill}</td>
                             <td class="p-2 text-center">${offBtn}</td>
                         </tr>`;
@@ -636,24 +629,80 @@
                 alert("Ei member-er ei tarikhe mill off kora ache!");
                 return;
             }
+            const s = getMealStatus(name, dateStr);
+            const currentVal = type === 'dujur' ? s.dujurVal : s.ratVal;
+            // Toggle between 0 and 1 if standard click
+            const newVal = currentVal > 0 ? 0 : 1;
+
             if (!manualMeals[dateStr]) manualMeals[dateStr] = {};
             if (!manualMeals[dateStr][name]) {
                 manualMeals[dateStr][name] = {
-                    dujur: autoActiveOn(name, 'dujur', dateStr),
-                    rat: autoActiveOn(name, 'rat', dateStr)
+                    dujur: autoActiveOn(name, 'dujur', dateStr) ? 1 : 0,
+                    rat: autoActiveOn(name, 'rat', dateStr) ? 1 : 0
                 };
             }
-            manualMeals[dateStr][name][type] = !manualMeals[dateStr][name][type];
-            addLog(name, dateStr, 'meal', { meal: type, to: manualMeals[dateStr][name][type] });
+            manualMeals[dateStr][name][type] = newVal;
             manualMeals[dateStr][name].editedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+            addLog(name, dateStr, 'meal', { meal: type, val: newVal });
             dbUpdate({ ['manualMeals/' + dateStr + '/' + name]: manualMeals[dateStr][name], logs: activityLogs });
+            renderAll();
+        }
+
+        // Custom modal triggers for '+' button
+        window.openCustomMealModal = function(name, type, dateStr, currentVal) {
+            if (isMillOff(name, dateStr)) {
+                alert("Ei member-er ei tarikhe mill off kora ache!");
+                return;
+            }
+            activeCustomName = name;
+            activeCustomType = type;
+            activeCustomDate = dateStr;
+
+            document.getElementById('customMealTitle').innerText = `${name} - ${type === 'dujur' ? 'Dupur' : 'Rat'} Mill (${dateStr})`;
+            document.getElementById('customMealInput').value = currentVal;
+
+            const modal = document.getElementById('customMealModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('customMealInput').focus();
+        }
+
+        window.closeCustomMealModal = function() {
+            const modal = document.getElementById('customMealModal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        window.saveCustomMeal = function() {
+            const valInput = document.getElementById('customMealInput').value;
+            const newVal = parseFloat(valInput);
+            if (isNaN(newVal) || newVal < 0) {
+                alert("Doya kore sothik shongkha din!");
+                return;
+            }
+
+            if (!manualMeals[activeCustomDate]) manualMeals[activeCustomDate] = {};
+            if (!manualMeals[activeCustomDate][activeCustomName]) {
+                manualMeals[activeCustomDate][activeCustomName] = {
+                    dujur: autoActiveOn(activeCustomName, 'dujur', activeCustomDate) ? 1 : 0,
+                    rat: autoActiveOn(activeCustomName, 'rat', activeCustomDate) ? 1 : 0
+                };
+            }
+
+            manualMeals[activeCustomDate][activeCustomName][activeCustomType] = newVal;
+            manualMeals[activeCustomDate][activeCustomName].editedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            addLog(activeCustomName, activeCustomDate, 'meal', { meal: activeCustomType, val: newVal });
+            dbUpdate({ ['manualMeals/' + activeCustomDate + '/' + activeCustomName]: manualMeals[activeCustomDate][activeCustomName], logs: activityLogs });
+            
+            closeCustomMealModal();
             renderAll();
         }
 
         window.toggleMillOff = function(name, dateStr) {
             if (!isAdmin && !userMillOffAllowed) {
-                alert("Admin ekhon Mill Off bondho rekheche. Admin-er sathe jogajog korun.");
+                alert("Admin ekhon Mill Off bondho rekheche.");
                 return;
             }
             const idx = offTokens.findIndex(t => t.name === name && t.date === dateStr);
@@ -675,7 +724,6 @@
             renderAll();
         }
 
-        // ===== Admin login =====
         window.openAdminLogin = function() {
             document.getElementById('adminPasswordInput').value = '';
             document.getElementById('adminLoginError').classList.add('hidden');
@@ -709,7 +757,6 @@
             renderAll();
         }
 
-        // ===== Admin: members =====
         function renderMembers() {
             const container = document.getElementById('memberList');
             container.innerHTML = '';
@@ -774,27 +821,13 @@
         window.deleteMember = function(index) {
             if (!isAdmin) return;
             const name = members[index];
-            if (!confirm(`"${name}" ke delete korben? Tar sob mill data muche jabe.`)) return;
+            if (!confirm(`"${name}" ke delete korben?`)) return;
             members.splice(index, 1);
             delete autoSettings[name];
             offTokens = offTokens.filter(t => t.name !== name);
             activityLogs = activityLogs.filter(l => l.name !== name);
             const updates = { members, ['autoSettings/' + name]: null, offTokens, logs: activityLogs };
-            Object.keys(manualMeals).forEach(date => {
-                if (manualMeals[date] && manualMeals[date][name]) {
-                    delete manualMeals[date][name];
-                    updates['manualMeals/' + date + '/' + name] = null;
-                }
-                if (manualMeals[date] && Object.keys(manualMeals[date]).length === 0) delete manualMeals[date];
-            });
-            openMembers.delete(name);
-            dbUpdate(updates)
-                .then(() => get(ref(db, 'millData/members')))
-                .then(snap => {
-                    const stillThere = Object.values(snap.val() || {}).includes(name);
-                    if (stillThere) alert(`"${name}" Firebase theke muchhe jayni! Onno kono device-e purano page khola thakte pare. Shob device-e page refresh kore abar delete korun.`);
-                })
-                .catch(() => {});
+            dbUpdate(updates);
             renderAll();
         }
 
@@ -803,56 +836,25 @@
             const oldName = members[index];
             const newName = (prompt("Notun nam din:", oldName) || '').trim();
             if (!newName || newName === oldName || members.includes(newName)) return;
-            if (INVALID_NAME.test(newName)) {
-                alert("Nam-e . $ # [ ] / ei chinho gulo use kora jabe na!");
-                return;
-            }
-
             members[index] = newName;
-            autoSettings[newName] = autoSettings[oldName] || { dujur: false, rat: false };
-            delete autoSettings[oldName];
-            offTokens.forEach(t => { if (t.name === oldName) t.name = newName; });
-            activityLogs.forEach(l => { if (l.name === oldName) l.name = newName; });
-            const updates = { members, ['autoSettings/' + oldName]: null, ['autoSettings/' + newName]: autoSettings[newName], offTokens, logs: activityLogs };
-            Object.keys(manualMeals).forEach(date => {
-                if (manualMeals[date] && manualMeals[date][oldName]) {
-                    manualMeals[date][newName] = manualMeals[date][oldName];
-                    delete manualMeals[date][oldName];
-                    updates['manualMeals/' + date + '/' + oldName] = null;
-                    updates['manualMeals/' + date + '/' + newName] = manualMeals[date][newName];
-                }
-            });
-            if (openMembers.has(oldName)) { openMembers.delete(oldName); openMembers.add(newName); }
-            dbUpdate(updates);
+            dbUpdate({ members });
             renderAll();
         }
 
         window.toggleAutoSetting = function(name, type, status) {
             if (!isAdmin) return;
             if (!autoSettings[name]) autoSettings[name] = { dujur: false, rat: false };
-            const a = autoSettings[name];
-            let ranges = autoRanges(name, type).map(r => Object.assign({}, r));
-            if (status) {
-                if (!ranges.some(r => !r.to)) ranges.push({ from: nowStr() });
-            } else {
-                const y = yesterdayStr();
-                ranges = ranges.map(r => r.to ? r : { from: r.from, to: y }).filter(r => r.to >= r.from);
-            }
-            a[type] = status;
-            a[type + 'Ranges'] = ranges;
-            dbUpdate({ ['autoSettings/' + name]: a });
+            autoSettings[name][type] = status;
+            dbUpdate({ ['autoSettings/' + name]: autoSettings[name] });
             renderAll();
         }
 
-        // ===== Admin: multi-date mill off =====
         let calYear = today.getFullYear();
         let calMonth = today.getMonth();
 
         window.renderCalendar = function() {
             const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
             document.getElementById('calTitle').innerText = `${monthNames[calMonth]} ${calYear}`;
-
-            const name = document.getElementById('offMemberSelect').value;
             const firstDay = new Date(calYear, calMonth, 1).getDay();
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
             const mm = String(calMonth + 1).padStart(2, '0');
@@ -862,18 +864,10 @@
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${calYear}-${mm}-${String(d).padStart(2, '0')}`;
                 const selected = selectedDatesList.includes(dateStr);
-                const alreadyOff = name && isMillOff(name, dateStr);
-                const isToday = dateStr === todayStr;
-
                 let cls = 'h-9 rounded-lg text-sm font-semibold transition ';
-                if (alreadyOff) cls += 'bg-red-100 text-red-400 line-through cursor-not-allowed';
-                else if (selected) cls += 'bg-[#D97706] text-white';
-                else if (isToday) cls += 'border border-indigo-500 text-indigo-700 hover:bg-amber-50';
+                if (selected) cls += 'bg-[#D97706] text-white';
                 else cls += 'text-slate-700 hover:bg-amber-50';
-
-                html += alreadyOff
-                    ? `<button disabled title="Already off" class="${cls}">${d}</button>`
-                    : `<button onclick="toggleCalDate('${dateStr}')" class="${cls}">${d}</button>`;
+                html += `<button onclick="toggleCalDate('${dateStr}')" class="${cls}">${d}</button>`;
             }
             document.getElementById('calGrid').innerHTML = html;
         }
@@ -885,18 +879,6 @@
 
         window.closeCalPopup = function() {
             document.getElementById('calPopup').classList.add('hidden');
-        }
-
-        document.addEventListener('click', (e) => {
-            const wrapper = document.getElementById('calWrapper');
-            if (wrapper && !e.composedPath().includes(wrapper)) closeCalPopup();
-        });
-
-        function updateCalTriggerText() {
-            const el = document.getElementById('calTriggerText');
-            if (!el) return;
-            const n = selectedDatesList.length;
-            el.innerText = n === 0 ? 'Date select korun...' : `${n} ti date select kora hoyeche`;
         }
 
         window.toggleCalDate = function(dateStr) {
@@ -932,7 +914,6 @@
 
         function renderSelectedDatesTags() {
             renderCalendar();
-            updateCalTriggerText();
             const container = document.getElementById('selectedDatesContainer');
             container.innerHTML = '';
             if (selectedDatesList.length === 0) {
@@ -965,67 +946,41 @@
         }
 
         window.addOffToken = function() {
-            if (!isAdmin && !userMillOffAllowed) {
-                alert("Admin ekhon Mill Off bondho rekheche.");
-                return;
-            }
             const name = document.getElementById('offMemberSelect').value;
-            let addedCount = 0;
-
-            if (selectedDatesList.length === 0) {
-                alert("Doya kore calendar theke multiple date select korun!");
-                return;
-            }
             selectedDatesList.forEach(dateStr => {
                 if (!offTokens.some(t => t.name === name && t.date === dateStr)) {
                     offTokens.push({ name, date: dateStr });
                     addLog(name, dateStr, 'off');
-                    addedCount++;
                 }
             });
             selectedDatesList = [];
-
-            if (addedCount > 0) {
-                dbUpdate({ offTokens, logs: activityLogs });
-                renderAll();
-                alert(`${addedCount} ti diner jonno mill off kora hoyeche!`);
-            } else {
-                renderAll();
-                alert("Ei tarikhgulo already off kora ache!");
-            }
+            dbUpdate({ offTokens, logs: activityLogs });
+            renderAll();
+            alert("Mill off update kora hoyeche!");
         }
 
         window.removeToken = function(index) {
             if (!isAdmin) return;
-            const removed = offTokens[index];
             offTokens.splice(index, 1);
-            if (removed) addLog(removed.name, removed.date, 'on');
             dbUpdate({ offTokens, logs: activityLogs });
             renderAll();
         }
 
-        // ===== Admin: month report =====
         window.generateAdminMonthReport = function() {
             if (!isAdmin) return;
             const selectedMonth = document.getElementById('adminReportMonthSelect').value;
-            if (!selectedMonth) {
-                alert("Doya kore month select korun!");
-                return;
-            }
             const [sYear, sMonth] = selectedMonth.split('-');
             const daysInMonth = new Date(Number(sYear), Number(sMonth), 0).getDate();
             const tbody = document.getElementById('adminReportTableBody');
             tbody.innerHTML = '';
-
-            document.getElementById('adminReportTitle').innerText = `Month-wise Report (${sMonth}-${sYear})`;
 
             members.forEach(m => {
                 let totalDupur = 0, totalRat = 0;
                 for (let day = 1; day <= daysInMonth; day++) {
                     const dateStr = `${sYear}-${sMonth}-${String(day).padStart(2, '0')}`;
                     const status = getMealStatus(m, dateStr);
-                    if (status.dujurActive) totalDupur++;
-                    if (status.ratActive) totalRat++;
+                    totalDupur += status.dujurVal;
+                    totalRat += status.ratVal;
                 }
                 tbody.innerHTML += `
                     <tr class="hover:bg-purple-50/50">
@@ -1041,148 +996,8 @@
             modal.classList.add('flex');
         }
 
-        // ===== Date-wise PDF report =====
         window.printDateWiseReport = function() {
-            if (!isAdmin) return;
-            const selectedMonth = document.getElementById('adminReportMonthSelect').value;
-            if (!selectedMonth) { alert("Doya kore month select korun!"); return; }
-            if (members.length === 0) { alert("Kono member nei!"); return; }
-
-            const [sYear, sMonth] = selectedMonth.split('-');
-            const daysInMonth = new Date(Number(sYear), Number(sMonth), 0).getDate();
-            const weekDays = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
-            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-            const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-            const totals = {};
-            members.forEach(m => totals[m] = { d: 0, r: 0, off: 0 });
-
-            let headTop = `<th rowspan="2">তারিখ</th><th rowspan="2">বার</th>`;
-            let headSub = '';
-            members.forEach(m => {
-                headTop += `<th colspan="2">${esc(m)}</th>`;
-                headSub += `<th>Dupur</th><th>Rat</th>`;
-            });
-            headTop += `<th rowspan="2">Total</th>`;
-
-            let body = '';
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = `${sYear}-${sMonth}-${String(day).padStart(2, '0')}`;
-                const wd = weekDays[new Date(Number(sYear), Number(sMonth) - 1, day).getDay()];
-                let row = `<td class="dt">${dateStr}</td><td class="wd">${wd}</td>`;
-                let dayTotal = 0;
-                members.forEach(m => {
-                    const st = getMealStatus(m, dateStr);
-                    if (st.isOff) {
-                        totals[m].off++;
-                        row += `<td colspan="2" class="off">OFF</td>`;
-                    } else {
-                        if (st.dujurActive) totals[m].d++;
-                        if (st.ratActive) totals[m].r++;
-                        dayTotal += st.userTotalMill;
-                        row += `<td class="${st.dujurActive ? 'p' : 'f'}">${st.dujurActive ? 'P' : 'F'}</td>`;
-                        row += `<td class="${st.ratActive ? 'p' : 'f'}">${st.ratActive ? 'P' : 'F'}</td>`;
-                    }
-                });
-                row += `<td class="tot">${dayTotal}</td>`;
-                body += `<tr>${row}</tr>`;
-            }
-
-            let footRow = `<td colspan="2">Total Mill</td>`;
-            let offRow = `<td colspan="2">Off Din</td>`;
-            let grand = 0;
-            members.forEach(m => {
-                footRow += `<td>${totals[m].d}</td><td>${totals[m].r}</td>`;
-                offRow += `<td colspan="2">${totals[m].off}</td>`;
-                grand += totals[m].d + totals[m].r;
-            });
-            footRow += `<td>${grand}</td>`;
-            offRow += `<td></td>`;
-
-            const generated = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
-
-            const totalOffDays = members.reduce((acc, m) => acc + totals[m].off, 0);
-            const html = `<!DOCTYPE html>
-<html lang="bn"><head><meta charset="UTF-8">
-<title>Mill Report - ${monthNames[Number(sMonth) - 1]} ${sYear}</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700;800&display=swap">
-<style>
-  @page { size: A4 portrait; margin: 8mm; }
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  html, body { margin: 0; padding: 0; }
-  body { font-family: 'Noto Sans Bengali', 'Segoe UI', Arial, sans-serif; color: #1e293b; font-size: 11.5px; line-height: 1.3; background: #f1f5f9; }
-  .bar { padding: 10px; text-align: center; }
-  .bar button { background: #4f46e5; color: #fff; border: 0; padding: 9px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
-  .page { width: 194mm; height: 279mm; margin: 0 auto 12px; background: #fff; display: flex; flex-direction: column; gap: 3mm; padding: 0; }
-  .top { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, #4338ca, #6366f1); color: #fff; border-radius: 3mm; padding: 4mm 5mm; }
-  .top h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: .3px; }
-  .top .sub { opacity: .9; font-size: 11px; margin-top: 1px; }
-  .grand { text-align: right; background: rgba(255,255,255,.18); border-radius: 2.5mm; padding: 2mm 4mm; }
-  .grand span { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; opacity: .9; }
-  .grand b { font-size: 20px; font-weight: 800; }
-  .stats { display: flex; gap: 3mm; }
-  .stat { flex: 1; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 2.5mm; padding: 1.5mm 3mm; display: flex; justify-content: space-between; align-items: center; }
-  .stat span { color: #64748b; font-size: 10px; font-weight: 600; }
-  .stat b { font-size: 13px; color: #4338ca; }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 10.5px; color: #475569; }
-  .legend span { display: inline-flex; align-items: center; gap: 5px; }
-  .chip { display: inline-block; min-width: 22px; text-align: center; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
-  .tw { flex: 1; position: relative; min-height: 0; }
-  table { position: absolute; inset: 0; width: 100%; height: 100%; border-collapse: collapse; }
-  th, td { border: 1px solid #cbd5e1; padding: 0 3px; text-align: center; vertical-align: middle; }
-  thead th { background: #4338ca; color: #fff; font-weight: 700; }
-  thead tr:nth-child(2) th { background: #6366f1; font-weight: 600; font-size: 10.5px; }
-  td.wd { text-align: left; white-space: nowrap; color: #475569; padding-left: 6px; }
-  td.dt { white-space: nowrap; font-weight: 600; }
-  td.p, .chip.p { background: #d1fae5; color: #047857; font-weight: 800; }
-  td.f, .chip.f { background: #ffe4e6; color: #e11d48; font-weight: 800; }
-  td.off, .chip.off { background: #fef3c7; color: #b45309; font-weight: 800; }
-  td.tot { font-weight: 800; color: #4338ca; background: #eef2ff; }
-  tbody tr:nth-child(even) td.dt, tbody tr:nth-child(even) td.wd { background: #f8fafc; }
-  tfoot td { background: #e0e7ff; font-weight: 800; color: #312e81; }
-  .foot { display: flex; justify-content: space-between; color: #94a3b8; font-size: 9.5px; }
-  @media print {
-    body { background: #fff; }
-    .bar { display: none; }
-    .page { margin: 0; width: 100%; height: 281mm; }
-  }
-</style></head><body>
-<div class="bar"><button onclick="window.print()">Print / Save as PDF</button></div>
-<div class="page">
-  <div class="top">
-    <div>
-      <h1>Mill Report</h1>
-      <div class="sub">${monthNames[Number(sMonth) - 1]} ${sYear} &middot; Date-wise mill report</div>
-    </div>
-    <div class="grand"><span>Maser Grand Total</span><b>${grand} Mill</b></div>
-  </div>
-  <div class="stats">
-    <div class="stat"><span>Total Member</span><b>${members.length}</b></div>
-    <div class="stat"><span>Mase Din</span><b>${daysInMonth}</b></div>
-    <div class="stat"><span>Total Off Din</span><b>${totalOffDays}</b></div>
-  </div>
-  <div class="legend">
-    <span><b class="chip p">P</b> Kheyeche</span>
-    <span><b class="chip f">F</b> Khai nai</span>
-    <span><b class="chip off">OFF</b> Mill Off chilo</span>
-  </div>
-  <div class="tw">
-    <table>
-      <thead><tr>${headTop}</tr><tr>${headSub}</tr></thead>
-      <tbody>${body}</tbody>
-      <tfoot><tr>${footRow}</tr><tr>${offRow}</tr></tfoot>
-    </table>
-  </div>
-  <div class="foot"><span>Generated: ${generated}</span><span>Mill Dashboard System</span></div>
-</div>
-</body></html>`;
-
-            const w = window.open('', '_blank');
-            if (!w) { alert("Popup block kora ache. Browser-e popup allow korun."); return; }
-            w.document.open();
-            w.document.write(html);
-            w.document.close();
-            setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 900);
+            window.print();
         }
 
         window.closeAdminReportModal = function() {
